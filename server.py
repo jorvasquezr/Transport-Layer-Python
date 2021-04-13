@@ -1,32 +1,35 @@
-
 import socket
+import sys
 
+# Create a TCP/IP socket
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-def server_program():
-    # get the hostname
-    host = socket.gethostname()
-    port = 5000  # initiate port no above 1024
+# Bind the socket to the port
+server_address = ('localhost', 5000)
+print('starting up on {} port {}'.format(*server_address))
+sock.bind(server_address)
 
-    server_socket = socket.socket()  # get instance
-    # look closely. The bind() function takes tuple as argument
-    server_socket.bind((host, port))  # bind host address and port together
+# Listen for incoming connections
+sock.listen(1)
 
-    # configure how many client the server can listen simultaneously
-    server_socket.listen(2)
-    conn, address = server_socket.accept()  # accept new connection
-    print("Connection from: " + str(address))
-    while True:
-        # receive data stream. it won't accept data packet greater than 1024 bytes
-        data = conn.recv(1024).decode()
-        if not data:
-            # if data is not received break
-            break
-        print("from connected user: " + str(data))
-        data = input(' -> ')
-        conn.send(data.encode())  # send data to the client
+while True:
+    # Wait for a connection
+    print('waiting for a connection')
+    connection, client_address = sock.accept()
+    try:
+        print('connection from', client_address)
 
-    conn.close()  # close the connection
+        # Receive the data in small chunks and retransmit it
+        while True:
+            data = connection.recv(16)
+            print('received {!r}'.format(data))
+            if data:
+                print('sending data back to the client')
+                connection.sendall(data)
+            else:
+                print('no data from', client_address)
+                break
 
-
-if __name__ == '__main__':
-    server_program()
+    finally:
+        # Clean up the connection
+        connection.close()

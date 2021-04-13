@@ -1,26 +1,30 @@
-
 import socket
+import sys
 
+# Create a TCP/IP socket
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-def client_program():
-    host = socket.gethostname()  # as both code is running on same pc
-    port = 5000  # socket server port number
+# Connect the socket to the port where the server is listening
+server_address = ('localhost', 5000)
+print('connecting to {} port {}'.format(*server_address))
+sock.connect(server_address)
 
-    client_socket = socket.socket()  # instantiate
-    client_socket.connect((host, port))  # connect to the server
+try:
 
-    message = input(" -> ")  # take input
+    # Send data
+    message = b'This is the message.  It will be repeated.'
+    print('sending {!r}'.format(message))
+    sock.sendall(message)
 
-    while message.lower().strip() != 'bye':
-        client_socket.send(message.encode())  # send message
-        data = client_socket.recv(1024).decode()  # receive response
+    # Look for the response
+    amount_received = 0
+    amount_expected = len(message)
 
-        print('Received from server: ' + data)  # show in terminal
+    while amount_received < amount_expected:
+        data = sock.recv(16)
+        amount_received += len(data)
+        print('received {!r}'.format(data))
 
-        message = input(" -> ")  # again take input
-
-    client_socket.close()  # close the connection
-
-
-if __name__ == '__main__':
-    client_program()
+finally:
+    print('closing socket')
+    sock.close()
