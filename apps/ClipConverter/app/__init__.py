@@ -1,12 +1,12 @@
 import socket
 
 IP = socket.gethostbyname(socket.gethostname())
-PORT = 4456
+PORT = 5000
 ADDR = (IP, PORT)
 FORMAT = "utf-8"
 SIZE = 1024
 
-def main():
+def startApp():
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client.connect(ADDR)
 
@@ -45,6 +45,3 @@ def main():
 
     print("Disconnected from the server.")
     client.close()
-
-if __name__ == "__main__":
-    main()
