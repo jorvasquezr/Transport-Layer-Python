@@ -1,47 +1,79 @@
 import socket
-
+from .configuration import FORMAT,BUFFER_SIZE
+import json
+from colorama import init, Fore
+from .ServiceVendor import ServiceVendor
 IP = socket.gethostbyname(socket.gethostname())
 PORT = 5000
 ADDR = (IP, PORT)
-FORMAT = "utf-8"
-SIZE = 1024
 
 def startApp():
-    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client.connect(ADDR)
-
+    conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    conn.connect(ADDR)
+    mainThread(conn)
+    print("Disconnected from the server.")
+    conn.close()
+    
+def mainThread(conn):
+    
     while True:
-        data = client.recv(SIZE).decode(FORMAT)
-        cmd, msg = data.split("@")
-
-        if cmd == "DISCONNECTED":
-            print(f"[SERVER]: {msg}")
+        data = json.loads(conn.recv(BUFFER_SIZE).decode(FORMAT))   
+        if data['request'] == "DISCONNECTED":
+            print(f"[SERVER]: {data['msg']}")
             break
-        elif cmd == "OK":
-            print(f"{msg}")
+        elif data['request'] == "OK":
+            print(f"[SERVER]: {data['msg']}")
+            
+        elif data['request'] == "RECEIVE_FILE":
+            print(ServiceVendor.receive_file(conn,data))
+            continue
 
+
+        commandHandler(conn,data)
+
+def commandHandler(conn,data):
+    while True:
         data = input("> ")
         data = data.split(" ")
-        cmd = data[0]
-
-        if cmd == "HELP":
-            client.send(cmd.encode(FORMAT))
-        elif cmd == "LOGOUT":
-            client.send(cmd.encode(FORMAT))
+        
+        if data[0] == "":
+            continue
+        
+        elif data[0] == "HELP":
+            conn.send(json.dumps({'request':data[0]}).encode(FORMAT))
             break
-        elif cmd == "LIST":
-            client.send(cmd.encode(FORMAT))
-        elif cmd == "DELETE":
-            client.send(f"{cmd}@{data[1]}".encode(FORMAT))
-        elif cmd == "UPLOAD":
-            path = data[1]
+        
+        elif data[0] == "LOGOUT":
+            conn.send(json.dumps({'request':data[0]}).encode(FORMAT))
+            break
+      
+        elif data[0] == "LIST":
+            conn.send(json.dumps({'request':data[0]}).encode(FORMAT))
+            break
+        
+        elif data[0] == "UPLOAD":
+            if(len(data)!=2):
+                print(f"{Fore.RED}Wrong amount of parameters{Fore.RESET}")
+            else:
+                msg = ServiceVendor.send_file(conn, {'filename':data[1]})
+                print(msg)
+                if(msg == "File not found"):
+                    continue
+            break
+        
+        elif data[0] == "DOWNLOAD":
+            if(len(data)!=2):
+                print(f"{Fore.RED}Wrong amount of parameters{Fore.RESET}")
+            else:
+                conn.send(json.dumps({'request':data[0],'filename':data[1]}).encode(FORMAT))
+            break
+        
+        elif data[0] == "DELETE":
+            if(len(data)!=2):
+                print(f"{Fore.RED}Wrong amount of parameters{Fore.RESET}")
+            else:
+                conn.send(json.dumps({'request':data[0],'filename':data[1]}).encode(FORMAT))
+            break
+        
+        print(f"{Fore.RED}Unknown command{Fore.RESET}")
 
-            with open(f"{path}", "r") as f:
-                text = f.read()
-
-            filename = path.split("/")[-1]
-            send_data = f"{cmd}@{filename}@{text}"
-            client.send(send_data.encode(FORMAT))
-
-    print("Disconnected from the server.")
-    client.close()

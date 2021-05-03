@@ -1,8 +1,10 @@
 
 from .ServiceVendor import ServiceVendor
 from threading import Thread 
-from .configuration import FORMAT,BUFFER_SIZE,SERVER_DATA_PATH
-
+from .configuration import FORMAT,BUFFER_SIZE,FOLDER_PATH
+import json
+from datetime import datetime
+from colorama import init, Fore
 class ClientConnection(Thread):
     def __init__(self,conn,ip,port):
         Thread.__init__(self) 
@@ -13,41 +15,67 @@ class ClientConnection(Thread):
         
         
     def run(self):
-        self.conn.send("OK@Welcome to the ClipConverter server.".encode(FORMAT))
+        print((f"{Fore.GREEN}[CONNECTED]{Fore.RESET}"
+            f" {self.ip}:{self.port}"
+            f" {datetime.now()}")
+        )  
+          
+        self.conn.sendall(json.dumps(
+            {'request':'OK',
+              'msg': 'Welcome to the ClipConverter server.'
+            }).encode(FORMAT))
+        
         while self.connected:
-            data = self.conn.recv(BUFFER_SIZE).decode(FORMAT)
-            data = data.split("@")
-            request = data[0]
-            result=self.__manageRequest(request,data)
-        print(f"[DISCONNECTED] {addr} disconnected")
+            stri=self.conn.recv(BUFFER_SIZE).decode(FORMAT)
+            if(stri==""):
+              self.connected=False
+              break
+            data = json.loads(stri)
+            result=self.__manageRequest(data)
+            self.conn.sendall(result.encode(FORMAT))
         self.conn.close()
+        print((f"{Fore.RED}[DISCONNECTED]{Fore.RESET}"
+            f" {self.ip}:{self.port}"
+            f" {datetime.now()}")
+        )
         
         
-    def __manageRequest(self, request,data):
-        result = 0
-        if request == "LIST":
-            result = ServiceVendor.listFiles(self.conn, data)
-
-        elif request == "UPLOAD":
-            result = ServiceVendor.uploadFile(self.conn, data)
-        
-
-        elif request == "DELETE":
-            result = ServiceVendor.deleteFile(self.conn, data)
+    def __manageRequest(self,data):
+        result = ""
+        if data['request'] == "LIST":
+            result =json.dumps(
+            {'request':'OK',
+              'msg': ServiceVendor.listFiles()
+            })    
+        elif data['request'] == "DELETE":
+            result =json.dumps(
+            {'request':'OK',
+              'msg': ServiceVendor.deleteFile(self.conn, data)
+            })
+        elif data['request'] == "RECEIVE_FILE":
+            result =json.dumps(
+            {'request':'OK',
+              'msg': ServiceVendor.receive_file(self.conn, data)
+            })
+        elif data['request'] == "DOWNLOAD":
+            result =json.dumps(
+            {'request':'OK',
+              'msg': ServiceVendor.send_file(self.conn, data)
+            })
             
-
-        elif request == "LOGOUT":
-            self.connected=false
+        elif data['request'] == "LOGOUT":
+            self.connected=False
+            result =json.dumps(
+            {'request':'DISCONNECTED',
+              'msg':'Thank you! we hope you come back soon'
+            })
             
-        elif request == "HELP":
-            data = "OK@"
-            data += "LIST: List all the files from the server.\n"
-            data += "UPLOAD <path>: Upload a file to the server.\n"
-            data += "DELETE <filename>: Delete a file from the server.\n"
-            data += "LOGOUT: Disconnect from the server.\n"
-            data += "HELP: List all the commands."
+        elif data['request'] == "HELP":
+            result =json.dumps(
+            {'request':'OK',
+              'msg': ServiceVendor.getHelpMsg()
+            })
 
-            self.conn.send(data.encode(FORMAT))
         return result
          
 
