@@ -15,7 +15,7 @@ def startApp():
     tcpServer.bind((TCP_IP, TCP_PORT)) 
     threads = []
     print((f"{Fore.BLUE}[SEVER STARTED]{Fore.RESET}"
-           f" {TCP_IP}:{TCP_PORT}"
+           f" {socket.gethostbyname(socket.gethostname())}:{TCP_PORT}"
            f" {datetime.now()}")) 
     while True: 
         tcpServer.listen(4) 

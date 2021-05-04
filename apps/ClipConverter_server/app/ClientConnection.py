@@ -31,6 +31,8 @@ class ClientConnection(Thread):
               self.connected=False
               break
             data = json.loads(stri)
+            data["ip"]=str(self.ip)
+            data["port"]=str(self.port)
             result=self.__manageRequest(data)
             self.conn.sendall(result.encode(FORMAT))
         self.conn.close()
@@ -51,6 +53,16 @@ class ClientConnection(Thread):
             result =json.dumps(
             {'request':'OK',
               'msg': ServiceVendor.deleteFile(self.conn, data)
+            })
+        elif data['request'] == "CONVERT":
+            result =json.dumps(
+            {'request':'OK',
+              'msg': ServiceVendor.onlyConvert(self.conn, data)
+            })
+        elif data['request'] == "FBC":
+            result =json.dumps(
+            {'request':'OK',
+              'msg': ServiceVendor.getFilesBeingConverted()
             })
         elif data['request'] == "RECEIVE_FILE":
             result =json.dumps(

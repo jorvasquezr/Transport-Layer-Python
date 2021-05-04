@@ -43,6 +43,10 @@ def commandHandler(conn,data):
             conn.send(json.dumps({'request':data[0]}).encode(FORMAT))
             break
         
+        elif data[0] == "FBC":
+            conn.send(json.dumps({'request':data[0]}).encode(FORMAT))
+            break
+        
         elif data[0] == "LOGOUT":
             conn.send(json.dumps({'request':data[0]}).encode(FORMAT))
             break
@@ -51,29 +55,39 @@ def commandHandler(conn,data):
             conn.send(json.dumps({'request':data[0]}).encode(FORMAT))
             break
         
+        elif data[0] == "CONVERT":
+            if(len(data)!=3):
+                print(f"{Fore.RED}Wrong amount of parameters{Fore.RESET}")
+            else:
+                msg = ServiceVendor.send_file(conn, {'request':'CONVERT','filesize':0,'filename':data[1],'extension':data[2]})
+                if(msg != "File not found"):
+                    break
+            continue
+        
         elif data[0] == "UPLOAD":
             if(len(data)!=2):
                 print(f"{Fore.RED}Wrong amount of parameters{Fore.RESET}")
             else:
-                msg = ServiceVendor.send_file(conn, {'filename':data[1]})
-                print(msg)
-                if(msg == "File not found"):
-                    continue
-            break
+                msg = ServiceVendor.send_file(conn, {'request':'RECEIVE_FILE','filesize':0,'filename':data[1]})
+                if(msg != "File not found"):
+                    break
+            continue
         
         elif data[0] == "DOWNLOAD":
             if(len(data)!=2):
                 print(f"{Fore.RED}Wrong amount of parameters{Fore.RESET}")
             else:
                 conn.send(json.dumps({'request':data[0],'filename':data[1]}).encode(FORMAT))
-            break
+                break
+            continue
         
         elif data[0] == "DELETE":
             if(len(data)!=2):
                 print(f"{Fore.RED}Wrong amount of parameters{Fore.RESET}")
             else:
                 conn.send(json.dumps({'request':data[0],'filename':data[1]}).encode(FORMAT))
-            break
+                break
+            continue
         
         print(f"{Fore.RED}Unknown command{Fore.RESET}")
 

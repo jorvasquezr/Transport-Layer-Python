@@ -28,9 +28,10 @@ class ServiceVendor:
         filePath=f"{FOLDER_PATH}/{data['filename']}"
         try:
             filesize = os.path.getsize(filePath)
+            data["filesize"]=filesize
         except:
             return "File not found"
-        conn.sendall(json.dumps({'request':'RECEIVE_FILE','filesize':filesize,'filename':data['filename']}).encode(FORMAT))
+        conn.sendall(json.dumps(data).encode(FORMAT))
         # Enviar el archivo en bloques de 1024 bytes.
         with open(filePath, "rb") as f:
             while read_bytes := f.read(1024):
