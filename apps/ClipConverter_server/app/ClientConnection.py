@@ -4,9 +4,10 @@ from threading import Thread
 from .configuration import FORMAT,BUFFER_SIZE,FOLDER_PATH
 import json
 from datetime import datetime
-from colorama import init, Fore
-from .configuration import TCP_PORT,TCP_IP
+
+from .configuration import TCP_PORT,TCP_IP, CONNECTED,DISCONNECTED
 import socket 
+import time
 class ClientConnection(Thread):
     def __init__(self,conn,ip,port):
         Thread.__init__(self) 
@@ -14,17 +15,20 @@ class ClientConnection(Thread):
         self.connected = True
         self.port=port
         self.ip = ip
+        self.start_time = 0
+        self.end_time = 0 
         
         
     def run(self):
-        print((f"{Fore.GREEN}[CONNECTED]{Fore.RESET}"
+        print((CONNECTED+
             f" {self.ip}:{self.port}"
             f" {datetime.now()}")
         )  
-          
+        
+        self.start_time = datetime.now()
         self.conn.sendall(json.dumps(
             {'request':'OK',
-              'msg': 'Welcome to the ClipConverter server.'
+              'msg': f'Welcome to the ClipConverter server.\t Connection started at: {datetime.now()}'
             }).encode(FORMAT))
         
         while self.connected:
@@ -40,7 +44,7 @@ class ClientConnection(Thread):
             result=self.__manageRequest(data)
             self.conn.sendall(result.encode(FORMAT))
         self.conn.close()
-        print((f"{Fore.RED}[DISCONNECTED]{Fore.RESET}"
+        print((DISCONNECTED+
             f" {self.ip}:{self.port}"
             f" {datetime.now()}")
         )
@@ -70,11 +74,6 @@ class ClientConnection(Thread):
               'msg': f'file {data["idfile"]} converted to {ServiceVendor.convert_stored( data)} '
             })
             
-        elif data['request'] == "STATUS":
-            result =json.dumps(
-            {'request':'OK',
-              'msg': ServiceVendor.getStatus(data)
-            })
         elif data['request'] == "FBC":
             result =json.dumps(
             {'request':'OK',
@@ -98,9 +97,11 @@ class ClientConnection(Thread):
             
         elif data['request'] == "EXIT":
             self.connected=False
+            self.end_time=datetime.now() -self.start_time
+            endconnection = datetime.now()
             result =json.dumps(
             {'request':'DISCONNECTED',
-              'msg':'Thank you! we hope you come back soon'
+              'msg':f'Thank you! we hope you come back soon\n Connection ended at {endconnection}\n Duration:{self.end_time}'
             })
             
         elif data['request'] == "HELP":
