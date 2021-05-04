@@ -51,7 +51,7 @@ def commandHandler(conn,data):
             conn.send(json.dumps({'request':data[0]}).encode(FORMAT))
             break
         
-        elif data[0] == "LOGOUT":
+        elif data[0] == "EXIT":
             conn.send(json.dumps({'request':data[0]}).encode(FORMAT))
             break
       
@@ -60,13 +60,26 @@ def commandHandler(conn,data):
             break
         
         elif data[0] == "CONVERT":
-            if(len(data)!=3):
+            if(len(data)<2):
                 print(f"{Fore.RED}Wrong amount of parameters{Fore.RESET}")
             else:
-                msg = ServiceVendor.send_file(conn, {'request':'CONVERT','filesize':0,'filename':data[1],'extension':data[2]})
-                if(msg != "File not found"):
-                    break
+                if(data[1]=="-s"):
+                    if(len(data)!=5):
+                        print(f"{Fore.RED}Wrong amount of parameters{Fore.RESET}")
+                    else:
+                        conn.send(json.dumps({'request':data[0],'option':data[1],'idfile':data[2],'filename':data[3],'extension':data[4]}).encode(FORMAT))
+                        break
+
+                        
+                if(data[1]=="-t"):
+                    if(len(data)!=4):
+                        print(f"{Fore.RED}Wrong amount of parameters{Fore.RESET}")
+                    else:
+                        msg = ServiceVendor.send_file(conn, {'request':data[0],'option':data[1],'filesize':0,'filename':data[2],'extension':data[3]})
+                        if(msg != "File not found"):
+                            break
             continue
+
         
         elif data[0] == "UPLOAD":
             if(len(data)!=2):
@@ -78,10 +91,10 @@ def commandHandler(conn,data):
             continue
         
         elif data[0] == "DOWNLOAD":
-            if(len(data)!=2):
+            if(len(data)!=3):
                 print(f"{Fore.RED}Wrong amount of parameters{Fore.RESET}")
             else:
-                conn.send(json.dumps({'request':data[0],'filename':data[1]}).encode(FORMAT))
+                conn.send(json.dumps({'request':data[0],'idfile':data[1],'filename':data[2]}).encode(FORMAT))
                 break
             continue
         

@@ -28,10 +28,12 @@ class ClientConnection(Thread):
             }).encode(FORMAT))
         
         while self.connected:
-            stri=self.conn.recv(BUFFER_SIZE).decode(FORMAT)
+            stri=self.conn.recv(BUFFER_SIZE)
+            stri.decode(FORMAT)
             if(stri==""):
               self.connected=False
               break
+            
             data = json.loads(stri)
             data["ip"]=str(self.ip)
             data["port"]=str(self.port)
@@ -57,10 +59,17 @@ class ClientConnection(Thread):
               'msg': ServiceVendor.deleteFile(self.conn, data)
             })
         elif data['request'] == "CONVERT":
+          if(data['option']=='-t'):
             result =json.dumps(
             {'request':'OK',
-              'msg': ServiceVendor.onlyConvert(self.conn, data)
+              'msg': ServiceVendor.convert_temp(self.conn, data)
             })
+          else:
+            result =json.dumps(
+            {'request':'OK',
+              'msg': f'file {data["idfile"]} converted to {ServiceVendor.convert_stored( data)} '
+            })
+            
         elif data['request'] == "STATUS":
             result =json.dumps(
             {'request':'OK',

@@ -38,6 +38,8 @@ class ServiceVendor:
     
     @staticmethod
     def getNewId():
+        if idf<len(os.listdir(FOLDER_PATH)):
+            idf = len(os.listdir(FOLDER_PATH))
         idf = ServiceVendor.fileid
         ServiceVendor.fileid+=1
         return idf
@@ -55,14 +57,14 @@ class ServiceVendor:
     
     
     @staticmethod
-    def onlyConvert(conn, data):
+    def convert_temp(conn, data):
         data["idfile"]=ServiceVendor().getNewId()
         fileStatus = ServiceVendor.receive_file(conn, data)
         
         if(fileStatus!="File received"):
             return "Error while receiving file"
 
-        convertResult = ServiceVendor.convert(data)
+        convertResult = ServiceVendor.convert_stored(data)
         if(convertResult) == "Error while converting file":
             return convertResult
         
@@ -81,9 +83,9 @@ class ServiceVendor:
         
     
     @staticmethod
-    def convert(data):
+    def convert_stored(data):
         ServiceVendor.files_being_converted[(data["ip"]+":"+data["port"])]=[str(data["idfile"]),data["filename"],data["extension"]]
-        time.sleep( 60 )
+        time.sleep( 5 )
         ServiceVendor.files_being_converted.pop(data["ip"]+":"+data["port"])
         newFileName=data["filename"]
         return newFileName
@@ -110,10 +112,8 @@ class ServiceVendor:
         
     @staticmethod                
     def send_file( conn, data):
-        if 'idfile' in data : 
-            filePath=f"{FOLDER_PATH}/{data['idfile']}_{data['filename']}"
-        else:
-            filePath=f"{FOLDER_PATH}/{data['filename']}"
+        filePath=f"{FOLDER_PATH}/{data['idfile']}_{data['filename']}"
+
         try:
             filesize = os.path.getsize(filePath)
         except:
@@ -131,9 +131,20 @@ class ServiceVendor:
     def getHelpMsg():
         return ("LIST: List all the files from the server.\n"
                 "UPLOAD <path>: Upload a file to the server.\n"
+                "DOWNLOAD <idfile> <filename>: Download expecific file.\n"
                 "DELETE <filename>: Delete a file from the server.\n"
-                "LOGOUT: Disconnect from the server.\n"
-                "HELP: List all the commands.\n")
+                "CONVERT -s <idfile> <filename> <new extension>: convert a stored file\n"
+                "CONVERT -t <filename> <new extension>: convert a temporal file\n"
+                "ST: show server time and ip.\n"
+                "FBC: List files being converted.\n"
+                "EXIT: Disconnect from the server.\n"
+                "HELP: List all commands.\n"
+                )
 
 
-        
+
+
+
+
+
+           
