@@ -7,6 +7,7 @@ IP = socket.gethostbyname(socket.gethostname())
 PORT = 5000
 ADDR = (IP, PORT)
 
+
 def startApp():
     conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     conn.connect(ADDR)
@@ -44,6 +45,9 @@ def commandHandler(conn,data):
             break
         
         elif data[0] == "FBC":
+            conn.send(json.dumps({'request':data[0]}).encode(FORMAT))
+            break
+        elif data[0] == "ST":
             conn.send(json.dumps({'request':data[0]}).encode(FORMAT))
             break
         

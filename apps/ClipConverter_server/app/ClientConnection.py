@@ -5,6 +5,8 @@ from .configuration import FORMAT,BUFFER_SIZE,FOLDER_PATH
 import json
 from datetime import datetime
 from colorama import init, Fore
+from .configuration import TCP_PORT,TCP_IP
+import socket 
 class ClientConnection(Thread):
     def __init__(self,conn,ip,port):
         Thread.__init__(self) 
@@ -59,11 +61,21 @@ class ClientConnection(Thread):
             {'request':'OK',
               'msg': ServiceVendor.onlyConvert(self.conn, data)
             })
+        elif data['request'] == "STATUS":
+            result =json.dumps(
+            {'request':'OK',
+              'msg': ServiceVendor.getStatus(data)
+            })
         elif data['request'] == "FBC":
             result =json.dumps(
             {'request':'OK',
               'msg': ServiceVendor.getFilesBeingConverted()
             })
+        elif data['request'] == "ST":
+                  result =json.dumps(
+                  {'request':'OK',
+                    'msg': f"{socket.gethostbyname(socket.gethostname())}:{TCP_PORT} {datetime.now()}"
+                  })
         elif data['request'] == "RECEIVE_FILE":
             result =json.dumps(
             {'request':'OK',
@@ -75,7 +87,7 @@ class ClientConnection(Thread):
               'msg': ServiceVendor.send_file(self.conn, data)
             })
             
-        elif data['request'] == "LOGOUT":
+        elif data['request'] == "EXIT":
             self.connected=False
             result =json.dumps(
             {'request':'DISCONNECTED',

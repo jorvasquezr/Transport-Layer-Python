@@ -5,9 +5,11 @@ import enum
 import socket
 import struct
 import time 
+from datetime import datetime
 
 class ServiceVendor:
     files_being_converted={}
+    fileid=0
     
     @staticmethod
     def deleteFile(filename):
@@ -33,13 +35,20 @@ class ServiceVendor:
         else:
             msg += "\n".join(f for f in files)
         return msg
+    
+    @staticmethod
+    def getNewId():
+        idf = ServiceVendor.fileid
+        ServiceVendor.fileid+=1
+        return idf
+    
     @staticmethod
     def getFilesBeingConverted():
-        listFBC="\nip port filename extension\n"
+        listFBC="\nip port idfile filename extension\n"
         for key in ServiceVendor.files_being_converted:
             valor=ServiceVendor.files_being_converted.get(key)
             keyvalues=key.split(":")
-            listFBC+= f"{keyvalues[0]} {keyvalues[1]} {valor[0]} {valor[1]}\n"
+            listFBC+= f"{keyvalues[0]} {keyvalues[1]} {valor[0]} {valor[1]} {valor[2]}\n"
         return listFBC
             
         
@@ -47,6 +56,7 @@ class ServiceVendor:
     
     @staticmethod
     def onlyConvert(conn, data):
+        data["idfile"]=ServiceVendor().getNewId()
         fileStatus = ServiceVendor.receive_file(conn, data)
         
         if(fileStatus!="File received"):
@@ -56,22 +66,23 @@ class ServiceVendor:
         if(convertResult) == "Error while converting file":
             return convertResult
         
-        sendResult=ServiceVendor.send_file(conn, {"filename":convertResult,"ip":data['ip'],"port":data['port']})
+        sendResult=ServiceVendor.send_file(conn, {"filename":convertResult,"idfile":data["idfile"]})
         if(sendResult!="File sent"):
             return "Error to send file"
         try:
-            ServiceVendor.deleteFile(data['ip']+'_'+data['port']+'_'+data['filename'])
-            ServiceVendor.deleteFile(data['ip']+'_'+data['port']+'_'+convertResult)
+            ServiceVendor.deleteFile(str(data['idfile'])+'_'+data['filename'])
+            ServiceVendor.deleteFile(str(data['idfile'])+'_'+convertResult)
         except:
             pass
         
         return "File received, converted and sent"
         
         
+        
     
     @staticmethod
     def convert(data):
-        ServiceVendor.files_being_converted[(data["ip"]+":"+data["port"])]=[data["filename"],data["extension"]]
+        ServiceVendor.files_being_converted[(data["ip"]+":"+data["port"])]=[str(data["idfile"]),data["filename"],data["extension"]]
         time.sleep( 60 )
         ServiceVendor.files_being_converted.pop(data["ip"]+":"+data["port"])
         newFileName=data["filename"]
@@ -79,8 +90,9 @@ class ServiceVendor:
     
     @staticmethod
     def receive_file( conn, data):
-        
-        with open(f"{FOLDER_PATH}/{data['ip']+'_'+data['port']+'_'+data['filename']}", "wb") as f:
+        if not 'idfile' in data :
+            data["idfile"]=ServiceVendor().getNewId()
+        with open(f"{FOLDER_PATH}/{data['idfile']}_{data['filename']}", "wb") as f:
             received_bytes = 0
             while received_bytes < data['filesize'] :
                 if(data['filesize']-received_bytes <BUFFER_SIZE):
@@ -98,7 +110,10 @@ class ServiceVendor:
         
     @staticmethod                
     def send_file( conn, data):
-        filePath=f"{FOLDER_PATH}/{data['ip']+'_'+data['port']+'_'+data['filename']}"
+        if 'idfile' in data : 
+            filePath=f"{FOLDER_PATH}/{data['idfile']}_{data['filename']}"
+        else:
+            filePath=f"{FOLDER_PATH}/{data['filename']}"
         try:
             filesize = os.path.getsize(filePath)
         except:
