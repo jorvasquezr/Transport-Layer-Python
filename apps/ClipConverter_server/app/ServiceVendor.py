@@ -87,7 +87,8 @@ class ServiceVendor:
         ServiceVendor.files_being_converted[(data["ip"]+":"+data["port"])]=[str(data["idfile"]),data["filename"],data["extension"]]
         time.sleep( 5 )
         ServiceVendor.files_being_converted.pop(data["ip"]+":"+data["port"])
-        newFileName=data["filename"]
+        newFileName='.'.join(data['filename'].split('.')[0:-1]) + data['extension']
+        os.system("ffmpeg -i (data['idfile']+''+data['filename']) (data['idfile']+''+newfilename)")
         return newFileName
     
     @staticmethod
