@@ -1,4 +1,4 @@
-from .configuration import BUFFER_SIZE,FORMAT,FOLDER_PATH
+from .configuration import BUFFER_SIZE,FORMAT,FOLDER_PATH,RESULT,TCP_PORT
 import os
 import json
 import enum
@@ -9,23 +9,34 @@ from datetime import datetime
 
 class ServiceVendor:
     files_being_converted={}
+    connections=[]
     fileid=0
     
+    
     @staticmethod
-    def deleteFile(filename):
+    def deleteFile(data):
+        print(data)
         files = os.listdir(FOLDER_PATH)
         msg = ""
         if len(files) == 0:
             msg = "The server directory is empty"
         else:
-            if filename in files:
-                os.system(f"rm {FOLDER_PATH}/{filename}")
+            if str(data['idfile'])+'_'+data['filename'] in files:
+                os.system(f"rm {FOLDER_PATH}/{str(data['idfile'])+'_'+data['filename']}")
                 msg = "File deleted successfully."
             else:
                 msg = "File not found."
         return msg
 
-    
+    @staticmethod
+    def splitFilename(text):
+        elements = text.split('_')
+        filename = '_'.join(elements[1:])
+        fileid = elements[0]
+        return fileid + ' ' + filename
+        
+
+
     @staticmethod
     def listFiles():
         files = os.listdir(FOLDER_PATH)
@@ -33,16 +44,27 @@ class ServiceVendor:
         if len(files) == 0:
             msg += "The server directory is empty"
         else:
-            msg += "\n".join(f for f in files)
+            msg += "\nid filename\n"
+            msg += "\n".join(list(map(ServiceVendor.splitFilename,files)))
         return msg
+
+    @staticmethod
+    def getFileId(text):
+        return  int(text.split('_')[0])
+
     
     @staticmethod
     def getNewId():
-        if idf<len(os.listdir(FOLDER_PATH)):
-            idf = len(os.listdir(FOLDER_PATH))
-        idf = ServiceVendor.fileid
-        ServiceVendor.fileid+=1
-        return idf
+        try:
+            files = os.listdir(FOLDER_PATH)
+            ServiceVendor.fileid=max(list(map(ServiceVendor.getFileId,files)))+1
+            return ServiceVendor.fileid
+        except: 
+            if ServiceVendor.fileid<len(os.listdir(FOLDER_PATH)):
+                ServiceVendor.fileid = len(os.listdir(FOLDER_PATH))
+            idf = ServiceVendor.fileid
+            ServiceVendor.fileid+=1
+            return idf
     
     @staticmethod
     def getFilesBeingConverted():
@@ -57,7 +79,7 @@ class ServiceVendor:
     
     
     @staticmethod
-    def convert_temp(conn, data):
+    def convert_temp(conn, data,addr):
         data["idfile"]=ServiceVendor().getNewId()
         fileStatus = ServiceVendor.receive_file(conn, data)
         
@@ -68,12 +90,12 @@ class ServiceVendor:
         if(convertResult) == "Error while converting file":
             return convertResult
         
-        sendResult=ServiceVendor.send_file(conn, {"filename":convertResult,"idfile":data["idfile"]})
+        sendResult=ServiceVendor.send_file(conn, {"filename":convertResult,"idfile":data["idfile"]},addr)
         if(sendResult!="File sent"):
             return "Error to send file"
         try:
-            ServiceVendor.deleteFile(str(data['idfile'])+'_'+data['filename'])
-            ServiceVendor.deleteFile(str(data['idfile'])+'_'+convertResult)
+            ServiceVendor.deleteFile({"filename":data["filename"],"idfile":data["idfile"]})
+            ServiceVendor.deleteFile({"filename":convertResult,"idfile":data["idfile"]})
         except:
             pass
         
@@ -84,12 +106,14 @@ class ServiceVendor:
     
     @staticmethod
     def convert_stored(data):
-        ServiceVendor.files_being_converted[(data["ip"]+":"+data["port"])]=[str(data["idfile"]),data["filename"],data["extension"]]
-        time.sleep( 5 )
-        ServiceVendor.files_being_converted.pop(data["ip"]+":"+data["port"])
-        newFileName='.'.join(data['filename'].split('.')[0:-1]) + data['extension']
-        os.system("ffmpeg -i (data['idfile']+''+data['filename']) (data['idfile']+''+newfilename)")
-        return newFileName
+        try:
+            ServiceVendor.files_being_converted[(data["ip"]+":"+data["port"])]=[str(data["idfile"]),data["filename"],data["extension"]]
+            newfilename='.'.join(data['filename'].split('.')[0:-1]) +'.'+ data['extension']
+            os.system(f"ffmpeg -i {FOLDER_PATH+'/'+str(data['idfile'])+'_'+data['filename']} {FOLDER_PATH+'/'+str(data['idfile'])+'_'+newfilename}")
+            ServiceVendor.files_being_converted.pop(data["ip"]+":"+data["port"])
+            return newfilename
+        except:
+            return "Error while converting file"
     
     @staticmethod
     def receive_file( conn, data):
@@ -108,11 +132,23 @@ class ServiceVendor:
                     received_bytes += len(chunk)
         return "File received"
 
-
-    
+    @staticmethod 
+    def receive(connection,addr):
+        try:
+            var = connection.recv(BUFFER_SIZE).decode(FORMAT)
+            data = json.loads( var)
+            print(RESULT.format('CLIENT:'+data['request'])+f"source: {addr[0]+':'+str(addr[1])} destination: {socket.gethostbyname(socket.gethostname())+':'+str(TCP_PORT)} ")    
+            return data
+        except:
+            return None
+    @staticmethod 
+    def send(connection,addr,dicData):
+        print(RESULT.format('SERVER:'+dicData['request'])+f"source: {socket.gethostbyname(socket.gethostname())+':'+str(TCP_PORT)} destination: {addr[0]+':'+str(addr[1])}")    
+        connection.sendall(json.dumps(dicData).encode(FORMAT))
+   
         
     @staticmethod                
-    def send_file( conn, data):
+    def send_file( conn, data,addr):
         filePath=f"{FOLDER_PATH}/{data['idfile']}_{data['filename']}"
 
         try:
@@ -120,7 +156,7 @@ class ServiceVendor:
         except:
             return "File not found"
         
-        conn.sendall(json.dumps({'request':'RECEIVE_FILE','filesize':filesize,'filename':data['filename']}).encode(FORMAT))
+        ServiceVendor.send(conn,addr, {'request':'RECEIVE_FILE','filesize':filesize,'filename':data['filename']})
         # Enviar el archivo en bloques de 1024 bytes.
         with open(filePath, "rb") as f:
             while read_bytes := f.read(1024):
@@ -131,19 +167,33 @@ class ServiceVendor:
     @staticmethod
     def getHelpMsg():
         return ("LIST: List all the files from the server.\n"
-                "UPLOAD <path>: Upload a file to the server.\n"
+                "UPLOAD <filename>: Upload a file to the server.\n"
                 "DOWNLOAD <idfile> <filename>: Download expecific file.\n"
-                "DELETE <filename>: Delete a file from the server.\n"
+                "DELETE <idfile> <filename>: Delete a file from the server.\n"
                 "CONVERT -s <idfile> <filename> <new extension>: convert a stored file\n"
                 "CONVERT -t <filename> <new extension>: convert a temporal file\n"
+                "CONNECTIONS: established connections\n"
                 "ST: show server time and ip.\n"
                 "FBC: List files being converted.\n"
                 "EXIT: Disconnect from the server.\n"
                 "HELP: List all commands.\n"
+                "DSFF: Download the supported formats file"
                 )
+    def sendSupportedFormats(conn,addr):
+        filePath=f"{FOLDER_PATH}/../supportedFormats.txt"
 
-
-
+        try:
+            filesize = os.path.getsize(filePath)
+        except:
+            return "File not found"
+        
+        ServiceVendor.send(conn,addr, {'request':'RECEIVE_FILE','filesize':filesize,'filename':'supportedFormats.txt'})
+        # Enviar el archivo en bloques de 1024 bytes.
+        with open(filePath, "rb") as f:
+            while read_bytes := f.read(1024):
+                conn.sendall(read_bytes)
+        return "supported formarts file sent"
+    
 
 
 

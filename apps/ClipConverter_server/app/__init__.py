@@ -15,8 +15,12 @@ def startApp():
            f" {socket.gethostbyname(socket.gethostname())}:{TCP_PORT}"
            f" {datetime.now()}")) 
     while True: 
-        tcpServer.listen(4) 
+        
+
+        tcpServer.listen(10)
+
         (conn, (ip,port)) = tcpServer.accept()
+        
       
         newthread = ClientConnection(conn, ip, port)
         newthread.start() 

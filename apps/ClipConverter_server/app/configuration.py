@@ -3,12 +3,14 @@ import os
 try:
     from colorama import init, Fore
     CONNECTED = f"{Fore.GREEN}[CONNECTED]{Fore.RESET}"
-    DISCONNECTED = f"{Fore.GREEN}[CONNECTED]{Fore.RESET}"
+    DISCONNECTED = f"{Fore.LIGHTBLACK_EX}[DISCONNECTED]{Fore.RESET}"
     SERVERSTATED =f"{Fore.BLUE}[SEVER STARTED]{Fore.RESET}" 
+    RESULT = Fore.LIGHTMAGENTA_EX+'[{}]'+Fore.RESET+': '
 except ImportError:
     CONNECTED = "[CONNECTED]"
-    DISCONNECTED = "[CONNECTED]"
-    SERVERSTATED ="[SEVER STARTED]" 
+    DISCONNECTED = "[DISCONNECTED]"
+    SERVERSTATED ="[SEVER STARTED]"
+    RESULT = '[{}]: ' 
 
 TCP_PORT = 5000
 TCP_IP = "0.0.0.0"
